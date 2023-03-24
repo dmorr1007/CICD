@@ -1,0 +1,45 @@
+name: Close Pull Request / Deploy to TEST instance
+
+# only trigger on pull request closed events
+on:
+  pull_request:
+    types: [ closed ]
+
+jobs:
+  merge_job:
+    name: Deploy package
+    runs-on: ubuntu-latest
+    # this job will only run if the PR has been merged, not on cancelled requests
+    if: github.event.pull_request.merged == true
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Publish to Store
+      id: sncicd-publish-app
+      uses: ServiceNow/sncicd-publish-app@1.2.0
+      with:
+        versionFormat: detect
+      env:
+        snowUsername: ${{ secrets.NOW_USERNAME }}
+        snowPassword: ${{ secrets.NOW_PASSWORD }}
+        snowSourceInstance: ${{ secrets.NOW_DEV_INSTANCE }}
+        appSysID: ${{ secrets.APP_SYS_ID }}
+          
+    - name: Create Tag in repository
+      if: ${{ success() && steps.sncicd-publish-app.outputs.newVersion }}
+      uses: tvdias/github-tagger@v0.0.2
+      with:
+        repo-token: ${{ github.token }}
+        tag: "${{ steps.sncicd-publish-app.outputs.newVersion }}"
+
+    - name: Install to PROD
+      if: ${{ success() && steps.sncicd-publish-app.outputs.newVersion }}
+      uses: ServiceNow/sncicd-install-app@1.0.0
+      with:
+        version: ${{ steps.sncicd-publish-app.outputs.newVersion }}
+      env:
+        snowUsername: ${{ secrets.NOW_USERNAME }}
+        snowPassword: ${{ secrets.NOW_PASSWORD }}
+        snowInstallInstance: ${{ secrets.NOW_TEST_INSTANCE }}
+        appSysID: ${{ secrets.APP_SYS_ID }}
+        appScope: ${{ secrets.APP_SCOPE }}
