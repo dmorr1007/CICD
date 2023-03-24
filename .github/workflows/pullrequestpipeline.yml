@@ -1,0 +1,37 @@
+name: ServiceNow Pull Request Pipeline
+
+on: 
+  pull_request:
+    branches:
+      - master
+     
+jobs:
+  build:
+  # Purpose of this job is to execute ATF on current branch
+    name: Run ATF on dev instance
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: ServiceNow CI/CD Apply Changes
+        uses: ServiceNow/sncicd-apply-changes@1.2.1
+        env:
+          snowUsername: ${{ secrets.NOW_USERNAME }}
+          snowPassword: ${{ secrets.NOW_PASSWORD }}
+          snowSourceInstance: ${{ secrets.NOW_DEV_INSTANCE }}
+          appSysID: ${{ secrets.APP_SYS_ID }}
+
+      - name: Run Tests 
+        id: atf_test_dev
+        uses: ServiceNow/sncicd-tests-run@1.0.0
+        with:
+          browserName:
+          browserVersion:
+          osName:
+          osVersion:
+          testSuiteSysId: ${{ secrets.TEST_SUITE_ID }}
+          testSuiteName:
+        env:
+          snowUsername: ${{ secrets.NOW_USERNAME }}
+          snowPassword: ${{ secrets.NOW_PASSWORD }}
+          snowInstallInstance: ${{ secrets.NOW_DEV_INSTANCE }}
